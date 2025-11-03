@@ -20,6 +20,11 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/")
+def home():
+    return jsonify({"message": "Threat Alert System Running"})
+
+
 # Config
 DB_URL = os.getenv("DATABASE_URL", "sqlite:///db.sqlite")
 app.config["SQLALCHEMY_DATABASE_URI"] = DB_URL
@@ -188,23 +193,6 @@ def list_alerts():
     limit = int(request.args.get("limit", 100))
     q = ThreatLog.query.order_by(ThreatLog.timestamp.desc()).limit(limit)
     return jsonify([l.to_dict() for l in q.all()])
-
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return jsonify({"message": "Threat Alert System Running"})
-
-@app.route('/api/alert', methods=['POST'])
-def alert():
-    data = request.get_json()
-    print("Threat Detected:", data)
-    return jsonify({"status": "Alert Received", "data": data})
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
 
 
 # Block IP endpoints
