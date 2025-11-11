@@ -296,59 +296,21 @@ def stream():
 
 
 # Simple simulation endpoint to generate fake logs for testing
-@app.route("/logs", methods=["POST"])
-def create_log():
+@app.route("/simulate", methods=["POST"])
+def simulate():
     data = request.get_json() or {}
-    ip = data.get("ip")
-    attack_type = data.get("attack_type") or "unknown"
-    severity = data.get("severity") or "medium"
-    details = data.get("details")
-
-    if not ip:
-        return jsonify({"error": "ip is required"}), 400
+    ip = data.get("ip", f"10.0.0.{int(time.time())%255}")
+    attack_type = data.get("attack_type", "DDoS")
+    severity = data.get("severity", "medium")
+    details = data.get("details", "simulated event")
 
     t = ThreatLog(ip=ip, attack_type=attack_type, severity=severity, details=details)
     db.session.add(t)
     db.session.commit()
-
-    # Send alert to frontend and console
     send_alert_notification(t)
-
-    # 🧾 Prepare and send SMS alert
-    message = f"⚠️ Threat detected!\nIP: {ip}\nType: {attack_type}\nSeverity: {severity}\nDetails: {details}"
-    try:
-        send_sms_alert(message)
-        print("[SMS] Alert sent successfully.")
-    except Exception as e:
-        print("[SMS] Failed to send alert:", e)
-
-    # Optionally auto-block based on severity
-    if severity.lower() == "high":
-        try:
-            block_ip_internal(ip, reason=f"Auto-block: {attack_type} (severity {severity})")
-        except Exception:
-            pass
-
-    return jsonify({"message": "log saved and SMS sent", "log": t.to_dict()}), 201
+    return jsonify({"message": "simulated", "log": t.to_dict()}), 201
 
 
-from twilio.rest import Client
-import os
-
-TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_FROM = os.getenv("TWILIO_PHONE_NUMBER")
-TO_NUMBER = "+91XXXXXXXXXX"  # <-- your verified phone number
-
-
-client = Client(TWILIO_SID, TWILIO_TOKEN)
-
-def send_sms_alert(message):
-    client.messages.create(
-        body=message,
-        from_=TWILIO_FROM,
-        to=TO_NUMBER
-    )
 
 # --------------------
 # Init
