@@ -25,26 +25,6 @@ def home():
     return jsonify({"message": "Threat Alert System Running"})
 
 
-# In-memory "database"
-threats = []
-
-
-
-@app.route('/add_threat', methods=['POST'])
-def add_threat():
-    data = request.get_json()
-    if not data or 'message' not in data or 'level' not in data:
-        return jsonify({"error": "Invalid data"}), 400
-
-    # Add to list
-    threats.append(data)
-    return jsonify({"status": "Threat added", "data": data}), 201
-
-@app.route('/get_threats', methods=['GET'])
-def get_threats():
-    return jsonify(threats)
-
-
 # Config
 DB_URL = os.getenv("DATABASE_URL", "sqlite:///db.sqlite")
 app.config["SQLALCHEMY_DATABASE_URI"] = DB_URL
@@ -108,27 +88,6 @@ def send_alert_notification(threat: ThreatLog):
         "timestamp": threat.timestamp.isoformat(),
         "status": threat.status,
     }
-
-    # --- Optional: Send SMS Alert via Twilio ---
-    if threat.severity.lower() == "high":
-        try:
-            from twilio.rest import Client
-
-            twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
-            twilio_token = os.getenv("TWILIO_AUTH_TOKEN")
-            from_num = os.getenv("TWILIO_PHONE")
-            to_num = os.getenv("ALERT_PHONE")
-
-            client = Client(twilio_sid, twilio_token)
-            sms = client.messages.create(
-                body=f"[ALERT] {threat.attack_type} detected from {threat.ip} (Severity: {threat.severity})",
-                from_=from_num,
-                to=to_num,
-            )
-
-            print(f"[SMS SENT] SID: {sms.sid}")
-        except Exception as e:
-            print("[ALERT] Failed to send SMS:", e)
 
     # Put into the in-memory SSE queue
     alert_queue.put(payload)
@@ -309,7 +268,6 @@ def simulate():
     db.session.commit()
     send_alert_notification(t)
     return jsonify({"message": "simulated", "log": t.to_dict()}), 201
-
 
 
 # --------------------
